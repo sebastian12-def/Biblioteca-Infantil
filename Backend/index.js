@@ -2,9 +2,9 @@
 
 import express from  "express";
 
-// ruta para health
+// ruta para health y auth
 import healthRoute from './src/routes/health.routes.js';
-
+import authRoutes from './src/routes/auth.routes.js'
 //  config de cors(lueugo la hago)
 
 // middleware para la rutas no encontradas
@@ -21,6 +21,7 @@ app.use(express.json())//para poder enviar JSON
 
 app.use('/health', healthRoute);
 
+app.use('/auth', authRoutes );
 
 // manejo de errores (luego)
 // si llego aqui => ninguana ruta coincidio = 404
