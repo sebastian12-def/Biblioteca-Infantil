@@ -33,4 +33,27 @@ export const checkDocumentExists = async (documento) =>{
     }
 
     return  true
+
+}
+
+
+
+
+// parte de login 
+export const getUserByDocumento = async ( documento) =>{
+    const {data, error} = await supabase
+    .from('usuarios')
+    .select('*')
+    .eq('documento', documento)//comparo el documeto que le paso y el que esta en la db 
+    .single();
+
+    if(error){//si existe el error pues fallo la peticion 
+        return {
+            success: false,
+            error: error.message
+        }
+    }
+
+    return {success: true, data: data}//single => devulve un objeto
+
 }
