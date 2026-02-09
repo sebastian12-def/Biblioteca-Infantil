@@ -462,8 +462,8 @@ Por hacer:
 - CORS configurado (talvez luego )
 - Validación con ZOD  (talvez luego )
 
-## Equipo
+## Equipo Backend
 
 - Cristian: Autenticación y JWT
-- [Compañero 1]: Libros
+- [Compañero 1]: Libros todos e indvidual
 - [Compañero 2]: Reservas e historial
