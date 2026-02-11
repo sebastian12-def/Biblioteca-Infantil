@@ -1,21 +1,17 @@
 import { Router } from 'express';
-// Importamos las funciones que creaste en el controlador
-import { solicitarPrestamo, getMisPrestamos } from '../controllers/prestamo.controller.js';
-
-// NOTA: Se comenta el middleware de autenticación porque el archivo no existe en la carpeta
-// import { verifyToken } from '../middlewares/auth.middleware.js'; 
+import { getMisPrestamosController, solicitarPrestamoController } from '../controllers/prestamo.controller.js';
+import { validarJWT } from '../middlewares/auth.js'; // El middleware que hizo Cristian
 
 const router = Router();
 
 /**
- * RUTA: POST /prestamos/solicitar
- * Quité 'verifyToken' para que el código no explote al arrancar
+ * 'validarJWT' extrae el id del alumno del token y lo pasa al controlador.
  */
-router.post('/solicitar', solicitarPrestamo);
+router.get('/mis-prestamos', validarJWT, getMisPrestamosController);
 
 /**
- * RUTA: GET /prestamos/mis-prestamos
+ * Protegido para que solo usuarios autenticados soliciten libros.
  */
-router.get('/mis-prestamos', getMisPrestamos);
+router.post('/solicitar', validarJWT, solicitarPrestamoController);
 
 export default router;
