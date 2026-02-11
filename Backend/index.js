@@ -1,14 +1,34 @@
-import express from "express";
-const aplicacion = express(); // Se crea la instancia antes de usarla
+// Aqui va todo lo relacionado  a la App (rutas , middleware etc...)
 
-import prestamoRoutes from './src/routes/prestamo.routes.js';
+import express from  "express";
+
+// ruta para health y auth
 import healthRoute from './src/routes/health.routes.js';
-import { notFoundHandler } from './src/middlewares/notFound.js';
+import authRoutes from './src/routes/auth.routes.js'
+import booksRoutes from './src/routes/books.routes.js'
+//  config de cors(lueugo la hago)
 
-aplicacion.use(express.json());
-aplicacion.use('/prestamos', prestamoRoutes);
-aplicacion.use('/health', healthRoute);
+// middleware para la rutas no encontradas
+import {notFoundHandler} from './src/middlewares/notFound.js'
 
-aplicacion.use(notFoundHandler);
 
-export default aplicacion; // Exportamos aplicacion
+const app = express() // se crea la app(instacia de express)
+
+app.use(express.json())//para poder enviar JSON
+
+
+// aqui middelware de cors (luego)
+
+
+app.use('/health', healthRoute);
+
+app.use('/auth', authRoutes );
+
+app.use('/libros', booksRoutes);
+
+// manejo de errores (luego)
+// si llego aqui => ninguana ruta coincidio = 404
+app.use(notFoundHandler);
+
+
+export default app; 
