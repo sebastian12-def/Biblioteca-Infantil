@@ -2,7 +2,8 @@ import express from "express"
 import { 
     getBooksController, 
     getBookByIdController, 
-    searchBooksController 
+    searchBooksController,
+    getEjemplaresLibroController
 } from '../controllers/books.controller.js'
 
 const router = express.Router()
@@ -15,5 +16,8 @@ router.get('/buscar', searchBooksController)
 
 // GET /libros/:id - Obtener un libro por ID
 router.get('/:id', getBookByIdController)
+
+// GET /libros/:id/ejemplares - Obtener ejemplares de un libro
+router.get('/:id/ejemplares', getEjemplaresLibroController)
 
 export default router

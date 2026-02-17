@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import '../views/gestor/bandeja_solicitudes_page.dart';
 import '../views/prestamos/mis_prestamos.dart';
+import '../services/auth_service.dart';
+import '../screens/login_screen.dart';
 
 class SidebarLeft extends StatelessWidget {
   const SidebarLeft({super.key});
@@ -21,16 +23,16 @@ class SidebarLeft extends StatelessWidget {
                 _buildNavItem(context, Iconsax.shop, 'Biblioteca', 0, true),
                 _buildNavItem(context, Iconsax.home, 'Inicio', 1),
                 _buildNavItem(context, Iconsax.heart, 'Favoritos', 2),
-                _buildNavItem(context, Iconsax.trend_up, 'Prestamos', 3),
-                _buildNavItem(context, Iconsax.book, 'Coleccion', 4),
+                _buildNavItem(context, Iconsax.trend_up, 'Mis Préstamos', 3),
+                _buildNavItem(context, Iconsax.book, 'Colección', 4),
                 _buildNavItem(context, Iconsax.document, 'Solicitudes', 5),
-                _buildNavItem(context, Iconsax.setting, 'Configuracion', 6),
+                _buildNavItem(context, Iconsax.setting, 'Configuración', 6),
               ],
             ),
           ),
           Padding(
             padding: const EdgeInsets.only(bottom: 20),
-            child: _buildNavItem(context, Iconsax.logout, 'Cerrar Sesion', 7),
+            child: _buildNavItem(context, Iconsax.logout, 'Cerrar Sesión', 7),
           ),
         ],
       ),
@@ -63,17 +65,33 @@ class SidebarLeft extends StatelessWidget {
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
-        onTap: () {
+        onTap: () async {
           if (label == 'Solicitudes') {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const BandejaSolicitudesPage()),
             );
-          } else if (label == 'Prestamos') {
-            Navigator.push(
+          } else if (label == 'Mis Préstamos') {
+            // Espera el resultado de la pantalla de préstamos
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const MisPrestamosPage()),
             );
+            // Si se devolvió un libro, refresca el dashboard si es posible
+            if (result == true) {
+              // Busca el ancestor ItemsGrid y llama a su método de recarga si existe
+              // (opcional: podrías usar un callback/global/provider para mayor robustez)
+              // Aquí, como ejemplo simple, forzamos un rebuild global:
+              (context as Element).markNeedsBuild();
+            }
+          } else if (label == 'Cerrar Sesión') {
+            await AuthService.logout();
+            if (context.mounted) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
+            }
           }
         },
       ),

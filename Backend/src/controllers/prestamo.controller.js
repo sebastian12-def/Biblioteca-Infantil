@@ -67,3 +67,34 @@ export const solicitarPrestamoController = async (req, res) => {
         res.status(500).json({ success: false, message: "Error al procesar la solicitud", error: error.message });
     }
 };
+
+/**
+ * Maneja la devolución de un préstamo.
+ * PUT /api/prestamos/devolver
+ * Body: { id_prestamo, id_ejemplar }
+ */
+export const devolverPrestamoController = async (req, res) => {
+    try {
+        const { id_prestamo, id_ejemplar } = req.body;
+        if (!id_prestamo || !id_ejemplar) {
+            return res.status(400).json({
+                success: false,
+                message: "Faltan datos necesarios (id_prestamo o id_ejemplar)"
+            });
+        }
+        const resultado = await prestamoService.finalizarPrestamo(id_prestamo, id_ejemplar);
+        if (!resultado.success) {
+            return res.status(400).json({
+                success: false,
+                message: "No se pudo devolver el libro",
+                error: resultado.error
+            });
+        }
+        res.status(200).json({
+            success: true,
+            message: resultado.message || "Libro devuelto correctamente"
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Error al devolver el libro", error: error.message });
+    }
+};

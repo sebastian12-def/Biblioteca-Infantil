@@ -3,7 +3,7 @@ import { supabase } from "../config/supabase.js"
 // Obtener todos los ejemplares de un libro
 export const getEjemplaresByLibro = async (id_libro) => {
     const { data, error } = await supabase
-        .from('ejemplares_libros')
+        .from('ejemplares_libro')
         .select('*')
         .eq('id_libro', id_libro)
     
@@ -15,25 +15,48 @@ export const getEjemplaresByLibro = async (id_libro) => {
 // Obtener ejemplares disponibles de un libro
 export const getEjemplaresDisponibles = async (id_libro) => {
     const { data, error } = await supabase
-        .from('ejemplares_libros')
+        .from('ejemplares_libro')
         .select('*')
         .eq('id_libro', id_libro)
-        .eq('estado', 'disponible')
+        .eq('disponibilidad', true)
     
     return error ? 
         { success: false, error: error.message } : 
         { success: true, data }
 }
 
+// Obtener conteo de ejemplares por libro (disponibles y prestados)
+export const getEjemplaresConteo = async (id_libro) => {
+    const { data, error } = await supabase
+        .from('ejemplares_libro')
+        .select('disponibilidad')
+        .eq('id_libro', id_libro)
+    
+    if (error) {
+        return { success: false, error: error.message }
+    }
+    
+    const total = data.length
+    const disponibles = data.filter(e => e.disponibilidad === true).length
+    const prestados = total - disponibles
+    
+    return { success: true, data: { total, disponibles, prestados } }
+}
+
 // Crear un nuevo ejemplar
 export const createEjemplar = async (ejemplarData) => {
-    if (!ejemplarData.id_libro || !ejemplarData.codigo_ejemplar) {
-        return { success: false, error: "Faltan id_libro y codigo_ejemplar" }
+    if (!ejemplarData.id_libro || !ejemplarData.codigo_inventario) {
+        return { success: false, error: "Faltan id_libro y codigo_inventario" }
     }
 
     const { data, error } = await supabase
-        .from('ejemplares_libros')
-        .insert([ejemplarData])
+        .from('ejemplares_libro')
+        .insert([{
+            id_libro: ejemplarData.id_libro,
+            codigo_inventario: ejemplarData.codigo_inventario,
+            condicion: ejemplarData.condicion || 'bueno',
+            disponibilidad: ejemplarData.disponibilidad !== false
+        }])
         .select()
     
     return error ? 
@@ -41,11 +64,11 @@ export const createEjemplar = async (ejemplarData) => {
         { success: true, data: data[0] }
 }
 
-// Actualizar estado de un ejemplar
-export const updateEjemplarEstado = async (id_ejemplar, estado) => {
+// Actualizar disponibilidad de un ejemplar
+export const updateEjemplarDisponibilidad = async (id_ejemplar, disponibilidad) => {
     const { data, error } = await supabase
-        .from('ejemplares_libros')
-        .update({ estado })
+        .from('ejemplares_libro')
+        .update({ disponibilidad })
         .eq('id_ejemplar', id_ejemplar)
         .select()
     
@@ -57,7 +80,7 @@ export const updateEjemplarEstado = async (id_ejemplar, estado) => {
 // Obtener un ejemplar por ID
 export const getEjemplarById = async (id_ejemplar) => {
     const { data, error } = await supabase
-        .from('ejemplares_libros')
+        .from('ejemplares_libro')
         .select('*')
         .eq('id_ejemplar', id_ejemplar)
         .single()
@@ -70,11 +93,26 @@ export const getEjemplarById = async (id_ejemplar) => {
 // Eliminar un ejemplar
 export const deleteEjemplar = async (id_ejemplar) => {
     const { error } = await supabase
-        .from('ejemplares_libros')
+        .from('ejemplares_libro')
         .delete()
         .eq('id_ejemplar', id_ejemplar)
     
     return error ? 
         { success: false, error: error.message } : 
         { success: true, message: "Ejemplar eliminado" }
+}
+
+// Obtener primer ejemplar disponible de un libro (para préstamos)
+export const getPrimerEjemplarDisponible = async (id_libro) => {
+    const { data, error } = await supabase
+        .from('ejemplares_libro')
+        .select('*')
+        .eq('id_libro', id_libro)
+        .eq('disponibilidad', true)
+        .limit(1)
+        .single()
+    
+    return error ? 
+        { success: false, error: error.message } : 
+        { success: true, data }
 }

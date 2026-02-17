@@ -1,10 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import '../services/auth_service.dart';
 
-class Header extends StatelessWidget {
+class Header extends StatefulWidget {
   final Function(String) onBusqueda;
 
   const Header({super.key, required this.onBusqueda});
+
+  @override
+  State<Header> createState() => _HeaderState();
+}
+
+class _HeaderState extends State<Header> {
+  String _userName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final name = await AuthService.getUserName();
+    if (mounted) {
+      setState(() => _userName = name);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +77,7 @@ class Header extends StatelessWidget {
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 8),
               child: TextField(
-                onChanged: onBusqueda,
+                onChanged: widget.onBusqueda,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   hintText: 'Buscar por título, autor o área...',
@@ -105,16 +126,27 @@ class Header extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(width: 16),
-                const CircleAvatar(
-                  radius: 20,
-                  backgroundImage: NetworkImage(
-                    'https://assets.codepen.io/3685267/nft-dashboard-pro-1.jpg',
+                const SizedBox(width: 8),
+                // Nombre del usuario
+                if (_userName.isNotEmpty)
+                  Text(
+                    _userName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
                   ),
-                ),
-                IconButton(
-                  onPressed: () {},
-                  icon: const Icon(Iconsax.arrow_down, color: Colors.white),
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: const Color(0xFFC026D3),
+                  child: Text(
+                    _userName.isNotEmpty ? _userName[0].toUpperCase() : 'U',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),

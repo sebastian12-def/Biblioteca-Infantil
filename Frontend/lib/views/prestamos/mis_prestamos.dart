@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/prestamo.dart';
-import '../../data/datos_simulados.dart';
+import '../../services/prestamo_service.dart';
 
 class MisPrestamosPage extends StatefulWidget {
   const MisPrestamosPage({super.key});
@@ -10,37 +10,175 @@ class MisPrestamosPage extends StatefulWidget {
 }
 
 class _MisPrestamosPageState extends State<MisPrestamosPage> {
+  List<Prestamo> _prestamos = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarPrestamos();
+  }
+
+  Future<void> _cargarPrestamos() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final prestamos = await PrestamoService.getMisPrestamos();
+      setState(() {
+        _prestamos = prestamos;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Error al cargar préstamos: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _devolverPrestamo(Prestamo prestamo) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF27272A),
+        title: const Text('Devolver libro', style: TextStyle(color: Colors.white)),
+        content: Text(
+          '¿Seguro que quieres devolver este libro? El ejemplar quedará disponible para otros usuarios.',
+          style: const TextStyle(color: Color(0xFFA1A1AA)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFC026D3)),
+            child: const Text('Devolver'),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true) return;
+    try {
+      final result = await PrestamoService.devolverPrestamo(
+        prestamo.id,
+        prestamo.ejemplar?.id ?? '',
+      );
+      if (result['success'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Libro devuelto correctamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _cargarPrestamos();
+          // Notifica al dashboard que hubo devolución
+          Navigator.pop(context, true);
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'] ?? 'No se pudo devolver el libro'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al devolver: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final activos = prestamosSimulados.where((p) => p.activo).toList();
+    final activos = _prestamos.where((p) => p.activo).toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFF18181B),
       appBar: AppBar(
         backgroundColor: const Color(0xFF18181B),
-        title: const Text('Préstamos Activos'),
+        title: const Text('Mis Préstamos'),
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _cargarPrestamos,
+          ),
+        ],
       ),
-      body: activos.isEmpty
-          ? const Center(
-              child: Text(
-                'No hay préstamos activos',
-                style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 18),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: activos.length,
-              itemBuilder: (context, index) {
-                final prestamo = activos[index];
-                return _buildPrestamoCard(prestamo);
-              },
+      body: _buildBody(activos),
+    );
+  }
+
+  Widget _buildBody(List<Prestamo> activos) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.blueAccent),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red, size: 48),
+            const SizedBox(height: 16),
+            Text(_error!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _cargarPrestamos,
+              child: const Text('Reintentar'),
             ),
+          ],
+        ),
+      );
+    }
+
+    if (activos.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.library_books, color: Color(0xFFA1A1AA), size: 48),
+            SizedBox(height: 16),
+            Text(
+              'No tienes préstamos activos',
+              style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 18),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: activos.length,
+      itemBuilder: (context, index) {
+        final prestamo = activos[index];
+        return _buildPrestamoCard(prestamo);
+      },
     );
   }
 
   Widget _buildPrestamoCard(Prestamo prestamo) {
     final diasPrestamo = DateTime.now().difference(prestamo.fechaPrestamo).inDays;
+    final tituloLibro = prestamo.libro?.titulo ?? 'Libro desconocido';
+    final ejemplarId = prestamo.ejemplar?.id ?? 'N/A';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -56,7 +194,7 @@ class _MisPrestamosPageState extends State<MisPrestamosPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  prestamo.libro.titulo,
+                  tituloLibro,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -65,11 +203,11 @@ class _MisPrestamosPageState extends State<MisPrestamosPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Usuario: ${prestamo.nombreUsuario}',
+                  'Estado: ${prestamo.estado}',
                   style: const TextStyle(color: Color(0xFFA1A1AA)),
                 ),
                 Text(
-                  'Ejemplar: ${prestamo.ejemplar.id}',
+                  'Ejemplar: $ejemplarId',
                   style: const TextStyle(color: Color(0xFFA1A1AA)),
                 ),
                 Text(
@@ -81,126 +219,34 @@ class _MisPrestamosPageState extends State<MisPrestamosPage> {
               ],
             ),
           ),
-          ElevatedButton(
-            onPressed: () => _mostrarDialogoDevolucion(prestamo),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFC026D3),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Registrar Devolución'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _mostrarDialogoDevolucion(Prestamo prestamo) {
-    String condicion = 'Bueno';
-    final observacionesController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF27272A),
-              title: const Text(
-                'Registrar Devolución',
-                style: TextStyle(color: Colors.white),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Libro: ${prestamo.libro.titulo}',
-                    style: const TextStyle(color: Color(0xFFA1A1AA)),
+          if (prestamo.activo)
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  Text(
-                    'Ejemplar: ${prestamo.ejemplar.id}',
-                    style: const TextStyle(color: Color(0xFFA1A1AA)),
+                  child: Text(
+                    'Activo',
+                    style: TextStyle(color: Colors.green[300]),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Condición de devolución:',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButton<String>(
-                    value: condicion,
-                    dropdownColor: const Color(0xFF27272A),
-                    style: const TextStyle(color: Colors.white),
-                    items: ['Bueno', 'Regular', 'Malo'].map((c) {
-                      return DropdownMenuItem(value: c, child: Text(c));
-                    }).toList(),
-                    onChanged: (value) {
-                      setDialogState(() {
-                        condicion = value!;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Observaciones:',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: observacionesController,
-                    maxLines: 3,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Escriba observaciones...',
-                      hintStyle: const TextStyle(color: Color(0xFF71717A)),
-                      filled: true,
-                      fillColor: const Color(0xFF18181B),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancelar', style: TextStyle(color: Color(0xFFA1A1AA))),
                 ),
+                const SizedBox(width: 8),
                 ElevatedButton(
-                  onPressed: () {
-                    _registrarDevolucion(prestamo, condicion, observacionesController.text);
-                    Navigator.pop(context);
-                  },
+                  onPressed: () => _devolverPrestamo(prestamo),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFC026D3),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                  child: const Text('Confirmar'),
+                  child: const Text('Devolver'),
                 ),
               ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _registrarDevolucion(Prestamo prestamo, String condicion, String observaciones) {
-    setState(() {
-      prestamo.activo = false;
-      prestamo.condicionDevolucion = condicion;
-      prestamo.observaciones = observaciones;
-      prestamo.ejemplar.disponible = true;
-      prestamo.ejemplar.condicion = condicion;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Devolución registrada: "${prestamo.libro.titulo}"'),
-        backgroundColor: Colors.green[700],
+            ),
+        ],
       ),
     );
   }

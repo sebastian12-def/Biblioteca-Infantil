@@ -1,31 +1,123 @@
 import 'package:flutter/material.dart';
 import '../models/libro.dart';
-import '../data/datos_simulados.dart';
+import '../services/libro_service.dart';
 import '../views/libros/libro_detalle.dart';
 
-class ItemsGrid extends StatelessWidget {
+class ItemsGrid extends StatefulWidget {
   final String filtro;
   final String busqueda;
 
   const ItemsGrid({super.key, this.filtro = 'Todos', this.busqueda = ''});
 
   @override
-  Widget build(BuildContext context) {
-    List<Libro> librosFiltrados = librosSimulados.where((libro) {
-      if (busqueda.isNotEmpty) {
-        final query = busqueda.toLowerCase();
-        if (!libro.titulo.toLowerCase().contains(query) &&
-            !libro.autor.toLowerCase().contains(query) &&
-            !libro.area.toLowerCase().contains(query)) {
-          return false;
-        }
-      }
+  State<ItemsGrid> createState() => _ItemsGridState();
+}
 
-      if (filtro == 'Disponibles') return libro.disponibles > 0;
-      if (filtro == 'Prestados') return libro.disponibles == 0;
-      if (filtro == 'Reservados') return libro.disponibles < libro.totalEjemplares;
+class _ItemsGridState extends State<ItemsGrid> {
+  List<Libro> _libros = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarLibros();
+  }
+
+  @override
+  void didUpdateWidget(ItemsGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Si cambió la búsqueda, recargar
+    if (oldWidget.busqueda != widget.busqueda) {
+      _cargarLibros();
+    }
+  }
+
+  Future<void> _cargarLibros() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      List<Libro> libros;
+      if (widget.busqueda.isNotEmpty) {
+        libros = await LibroService.buscarLibros(widget.busqueda);
+      } else {
+        libros = await LibroService.getLibros();
+      }
+      
+      setState(() {
+        _libros = libros;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Error al cargar libros: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  List<Libro> _aplicarFiltro(List<Libro> libros) {
+    return libros.where((libro) {
+      if (widget.filtro == 'Disponibles') return libro.disponibles > 0;
+      if (widget.filtro == 'Prestados') return libro.disponibles == 0;
+      if (widget.filtro == 'Reservados') return libro.disponibles < libro.totalEjemplares;
       return true;
     }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: CircularProgressIndicator(color: Colors.blueAccent),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              Text(_error!, style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _cargarLibros,
+                child: const Text('Reintentar'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final librosFiltrados = _aplicarFiltro(_libros);
+
+    if (librosFiltrados.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: Column(
+            children: [
+              Icon(Icons.library_books, color: Color(0xFFA1A1AA), size: 48),
+              SizedBox(height: 16),
+              Text(
+                'No se encontraron libros',
+                style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 16),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return GridView.builder(
       shrinkWrap: true,
@@ -142,13 +234,18 @@ class ItemsGrid extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
+                    onPressed: () async {
+                      // Navega a detalles y espera el resultado
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => LibroDetallePage(libro: libro),
                         ),
                       );
+                      // Al volver, refresca la grilla para mostrar disponibilidad real
+                      if (mounted) {
+                        _cargarLibros();
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFC026D3),

@@ -1,5 +1,6 @@
 // index.js: Configuración de la App (rutas, middleware, etc.)
 import express from "express";
+import cors from "cors";
 
 // Importación de rutas
 import healthRoute from './src/routes/health.routes.js';
@@ -11,6 +12,9 @@ import prestamoRoutes from './src/routes/prestamo.routes.js';
 import { notFoundHandler } from './src/middlewares/notFound.js';
 
 const app = express();
+
+// CORS - permitir peticiones desde cualquier origen (Flutter web, móvil, etc.)
+app.use(cors());
 
 app.use(express.json()); // Middleware para procesar JSON
 
