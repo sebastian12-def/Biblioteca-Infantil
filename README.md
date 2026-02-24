@@ -1,469 +1,190 @@
 # Biblioteca Infantil
 
-Sistema de gestión de biblioteca para estudiantes. Permite registrarse, autenticarse y gestionar reservas de libros.
+Proyecto fullstack para una biblioteca escolar.
 
-## Estructura del Proyecto
+- Backend: Node.js + Express + Supabase
+- Frontend: Flutter
+- Auth: JWT
+- Puerto backend: `3000`
 
-```
-Biblioteca-Infantil/
-├── Backend/
-│   ├── src/
-│   │   ├── config/
-│   │   │   └── supabase.js          # Configuración de conexión a BD
-│   │   ├── controllers/
-│   │   │   └── auth.controller.js   # Lógica de registro y login
-│   │   ├── middlewares/
-│   │   │   ├── auth.js              # Validación de JWT
-│   │   │   └── notFound.js          # Manejo de rutas no encontradas
-│   │   ├── routes/
-│   │   │   ├── auth.routes.js       # Endpoints de autenticación
-│   │   │   └── health.routes.js     # Health check
-│   │   └── services/
-│   │       ├── authUserService.js   # Lógica de usuarios
-│   │       └── tokenService.js      # Generación y verificación de JWT
-│   ├── index.js                     # Configuración de Express
-│   ├── server.js                    # Punto de entrada
-│   └── package.json
-├── Frontend/
-│   └── (por implementar)
-└── .gitignore
+## Que hace el sistema
 
-```
+1. Permite registrar usuarios estudiantes.
+2. Permite iniciar sesion.
+3. Permite ver libros y ejemplares.
+4. Permite pedir prestamos.
+5. Permite devolver prestamos (solo los tuyos).
 
-## Instalación
+## Arranque rapido (5 minutos)
 
-### Requisitos
+1. Clona el repo.
+2. Crea `.env` en la raiz.
+3. Instala dependencias con `npm install`.
+4. Levanta backend con `npm run dev`.
+5. Levanta frontend con `cd Frontend && flutter run -d chrome`.
 
-- Node.js v24.12.0 o superior
-- npm o yarn
-- Cuenta en Supabase
+## Variables de entorno
 
-### Pasos
+Archivo `.env` en la raiz:
 
-1. Clonar el repositorio
-
-```bash
-git clone <url-repositorio>
-cd Biblioteca-Infantil
-```
-
-2. Instalar dependencias
-
-```bash
-npm install
-```
-
-3. Configurar variables de entorno
-
-Crear archivo `.env` en la raíz:
-
-```
-SUPABASE_URL=tu_url_supabase
-SUPABASE_KEY=tu_key_supabase
-JWT_SECRET=tu_secret_muy_seguro_minimo_32_caracteres
-PORT=5000
+```env
+SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_KEY=tu_service_role_key
+JWT_SECRET=una_clave_larga_de_al_menos_32_caracteres
+PORT=3000
 NODE_ENV=development
 ```
 
-4. Ejecutar el servidor
+## Base de datos (paso importante)
+
+Hay un script de hardening en:
+`Backend/sql/01_hardening_prestamos_auth.sql`
+
+Este script:
+- hace unico `usuarios.documento`
+- evita 2 prestamos activos para el mismo ejemplar
+- agrega indices para consultas
+
+### Si YA lo ejecutaste
+No necesitas correrlo otra vez.
+
+### Si NO lo ejecutaste
+1. Abre Supabase > SQL Editor.
+2. Pega el contenido del archivo SQL.
+3. Ejecuta.
+
+## Correr backend
+
+Desde la raiz del proyecto:
 
 ```bash
-npm run dev      # Con nodemon (desarrollo)
-npm start        # Sin nodemon (producción)
+npm install
+npm run dev
 ```
 
-El servidor estará en `http://localhost:5000`
+Backend esperado en:
+`http://localhost:3000`
 
-## Base de Datos
+Health check:
+`http://localhost:3000/health`
 
-### Tabla: usuarios
+## Correr frontend
 
-```sql
-CREATE TABLE usuarios (
-  id_usuario UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  documento VARCHAR UNIQUE NOT NULL,
-  password TEXT NOT NULL,
-  nombre VARCHAR NOT NULL,
-  apellido VARCHAR NOT NULL,
-  tipo_usuario VARCHAR DEFAULT 'estudiante',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+En otra terminal:
+
+```bash
+cd Frontend
+flutter pub get
+flutter run -d chrome
 ```
 
-## API Endpoints
+## Flujo de autenticacion actual
 
-### Autenticación
+1. Registro crea usuario.
+2. Despues del registro, la app redirige a Login.
+3. Login exitoso devuelve token JWT y entra al Dashboard.
 
-#### Registro
+## Endpoints principales
 
-```http
-POST /auth/register
-Content-Type: application/json
+### Registro
+`POST /auth/register`
 
+Body:
+
+```json
 {
   "documento": "12345678",
   "password": "password123",
   "nombre": "Juan",
-  "apellido": "Pérez",
+  "apellido": "Perez",
   "tipo_usuario": "estudiante"
 }
 ```
 
-Respuesta exitosa (201):
+Respuesta `201`:
 
 ```json
 {
   "success": true,
   "message": "Usuario registrado exitosamente",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expiresIn": "7d",
   "usuario": {
-    "id": "86e35d6e-a013-4f10-8f80-3ec81d780bc0",
+    "id": "uuid",
     "documento": "12345678",
     "nombre": "Juan",
-    "apellido": "Pérez",
+    "apellido": "Perez",
     "tipo_usuario": "estudiante"
   }
 }
 ```
 
-Errores:
+### Login
+`POST /auth/login`
 
-- 400: Faltan datos requeridos
-- 409: Documento ya registrado
-- 500: Error del servidor
+Body:
 
-#### Login
-
-```http
-POST /auth/login
-Content-Type: application/json
-
+```json
 {
   "documento": "12345678",
   "password": "password123"
 }
 ```
 
-Respuesta exitosa (200):
+Respuesta `200`:
 
 ```json
 {
   "success": true,
   "message": "Login exitoso",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token": "jwt...",
   "expiresIn": "7d",
   "usuario": {
-    "id": "86e35d6e-a013-4f10-8f80-3ec81d780bc0",
+    "id": "uuid",
     "documento": "12345678",
     "nombre": "Juan",
-    "apellido": "Pérez",
+    "apellido": "Perez",
     "tipo_usuario": "estudiante"
   }
 }
 ```
 
-Errores:
+### Prestamos (protegidos)
 
-- 400: Faltan documento o password
-- 404: Usuario no encontrado
-- 401: Password incorrecta
-- 500: Error del servidor
+- `GET /api/prestamos/mis-prestamos`
+- `POST /api/prestamos/solicitar`
+- `PUT /api/prestamos/devolver`
 
-## JWT (JSON Web Token)
-
-El token contiene:
-
-```
-Header:
-{
-  "alg": "HS256",
-  "typ": "JWT"
-}
-
-Payload:
-{
-  "id": "uuid-del-usuario",
-  "documento": "12345678",
-  "tipo_usuario": "estudiante",
-  "iat": 1770596118,
-  "exp": 1771200918
-}
-
-Signature:
-HMACSHA256(base64UrlEncode(header) + "." + base64UrlEncode(payload), JWT_SECRET)
-```
-
-El token expira en 7 días.
-
-## Usar Token en Requests
-
-Incluir en el header `Authorization`:
+Header requerido:
 
 ```http
-GET /ruta-protegida
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Authorization: Bearer <token>
 ```
 
-## Seguridad
+## Reglas de seguridad implementadas
 
-- Las contraseñas se encriptan con bcrypt (10 salt rounds) antes de guardar
-- Los tokens se firman con HS256 usando JWT_SECRET
-- El JWT_SECRET debe tener mínimo 32 caracteres
-- Las contraseñas hasheadas en BD no pueden invertirse
+- Password hasheado con bcrypt.
+- JWT con expiracion de 7 dias.
+- Validacion de payload en rutas (`express-validator`).
+- Un usuario no puede devolver prestamos de otro usuario.
+- Manejo de consistencia en prestamos/devoluciones con rollback.
 
-## Arquitectura
+## Git y ramas
 
-El proyecto sigue el patrón: **Route -> Controller -> Service -> Database**
-
-- **Routes**: Define endpoints y vincula con controllers
-- **Controllers**: Maneja requests HTTP, valida datos, orquesta services
-- **Services**: Contiene lógica de negocio y queries a BD
-- **Middlewares**: Interceptan requests para validaciones globales
-
-No se usan Models porque Supabase SDK proporciona ya la abstracción de datos.
-
-## Flujo de Trabajo Colaborativo
-
-### Estructura de Ramas
-
-```
-main (rama principal - NO TOCAR)
-  └── develop (rama de desarrollo - aquí trabaja todo el equipo)
-       ├── feature/auth
-       ├── feature/libros
-       ├── feature/reservas
-       ├── feature/ui-auth
-       └── feature/dashboard
-```
-
-### Regla de Oro
-
-**NADIE toca `main` directamente. TODOS hacen PR a `develop`.**
-
-### Proceso de Trabajo
-
-#### Paso 1: Actualizar develop
+Trabajo recomendado:
 
 ```bash
 git checkout develop
 git pull origin develop
 ```
 
-#### Paso 2: Cambiar a tu rama
+Haz cambios, commit y push a `develop` (o a una feature branch si tu flujo lo pide).
 
-```bash
-git checkout tu-rama
-git pull origin tu-rama
-```
+## Problemas comunes
 
-#### Paso 3: Hacer cambios
+- Error de conexion frontend-backend:
+  revisa que backend este en `3000` y que frontend use `http://localhost:3000`.
 
-```bash
-# Agregar archivos específicos
-git add Backend/src/controllers/mi-controller.js
-git add Backend/src/services/mi-service.js
+- Error de Supabase:
+  revisa `SUPABASE_URL`, `SUPABASE_KEY` y permisos de tablas.
 
-# Commit con mensaje descriptivo
-git commit -m "feat: crear endpoint para obtener libros"
-
-# Otro cambio
-git add Backend/src/routes/libros.routes.js
-git commit -m "feat: agregar ruta GET /libros"
-
-# Push a tu rama
-git push origin tu-rama
-```
-
-#### Paso 4: Crear Pull Request
-
-En GitHub:
-
-1. Ir a "Pull Requests"
-2. Click en "New Pull Request"
-3. Base: `develop` | Compare: `tu-rama`
-4. Agregar descripción clara
-5. Solicitar review a otros miembros
-6. Esperar aprobación
-7. Mergear cuando esté aprobado
-
-#### Paso 5: Después del merge
-
-```bash
-# Volver a develop
-git checkout develop
-
-# Actualizar
-git pull origin develop
-
-# Eliminar rama local
-git branch -d tu-rama
-
-# Eliminar rama remota
-git push origin --delete tu-rama
-```
-
-### Convenciones de Commits
-
-Formato: `<tipo>: <descripción>`
-
-Tipos:
-
-- **feat**: Nueva funcionalidad
-  ```
-  git commit -m "feat: agregar registro de usuarios"
-  ```
-
-- **fix**: Corrección de bug
-  ```
-  git commit -m "fix: corregir validación de email en login"
-  ```
-
-- **docs**: Documentación
-  ```
-  git commit -m "docs: actualizar README con nuevos endpoints"
-  ```
-
-- **style**: Cambios de formato (sin lógica)
-  ```
-  git commit -m "style: ajustar indentación en auth.controller.js"
-  ```
-
-- **refactor**: Reorganizar código (sin cambiar comportamiento)
-  ```
-  git commit -m "refactor: extraer validación a función separada"
-  ```
-
-- **test**: Agregar tests
-  ```
-  git commit -m "test: crear tests para endpoint /login"
-  ```
-
-- **chore**: Tareas administrativas
-  ```
-  git commit -m "chore: actualizar dependencias de npm"
-  ```
-
-### Resolución de Conflictos
-
-Si hay conflicto al hacer pull:
-
-1. Git indicará archivos con conflictos
-2. Abre el archivo y verás marcadores:
-
-```
-<<<<<<< HEAD
-Tu código
-=======
-Código remoto
->>>>>>> rama-remota
-```
-
-3. Decide qué código mantener (elimina marcadores)
-4. Resuelve:
-
-```bash
-git add archivo-resuelto.js
-git commit -m "fix: resolver conflicto en archivo-resuelto.js"
-git push origin feature/tu-funcionalidad
-```
-
-### Reglas Importantes
-
-- NO trabajar directamente en `main`
-- SIEMPRE crear rama `feature/` desde `develop`
-- NUNCA modificar archivos de otros miembros
-- SIEMPRE hacer `git pull` antes de empezar
-- SIEMPRE hacer `git pull` antes de hacer push
-- Commits frecuentes y descriptivos (no commits gigantes)
-- Revisar cambios antes de hacer commit: `git diff`
-
-### Distribución de Responsabilidades
-
-#### Backend
-
-| Miembro | Feature | Archivos | Rama |
-|---------|---------|----------|------|
-| Cristian | Autenticación | `Backend/src/controllers/auth.controller.js`, `Backend/src/services/authUserService.js`, `Backend/src/services/tokenService.js`, `Backend/src/middlewares/auth.js` | `feature/auth` |
-| Compañero 1 | Libros | `Backend/src/controllers/libros.controller.js`, `Backend/src/services/libros.service.js`, `Backend/src/routes/libros.routes.js` | `feature/libros` |
-| Compañero 2 | Reservas | `Backend/src/controllers/reservas.controller.js`, `Backend/src/services/reservas.service.js`, `Backend/src/routes/reservas.routes.js` | `feature/reservas` |
-
-#### Frontend
-
-| Miembro | Feature | Archivos | Rama |
-|---------|---------|----------|------|
-| Compañero 3 | UI Autenticación | `Frontend/lib/screens/register_screen.dart`, `Frontend/lib/screens/login_screen.dart`, `Frontend/lib/widgets/auth_form.dart` | `feature/ui-auth` |
-| Compañero 4 | Dashboard | `Frontend/lib/screens/dashboard_screen.dart`, `Frontend/lib/widgets/book_list.dart`, `Frontend/lib/widgets/reservation_form.dart` | `feature/dashboard` |
-
-#### Compartido
-
-| Archivos | Responsable | Notas |
-|----------|-------------|-------|
-| `Backend/index.js`, `Backend/package.json` | Todos | Coordinar cambios vía PR |
-| `.env.example` | Todos | Actualizar cuando hay nuevas variables |
-| `README.md` | Todos | Documentación de cambios |
-
-### Comandos Git Útiles
-
-```bash
-# Ver historial de commits
-git log --oneline
-
-# Ver ramas locales
-git branch
-
-# Ver ramas remotas
-git branch -r
-
-# Ver cambios pendientes
-git status
-git diff
-
-# Deshacer cambio en archivo (antes de hacer add)
-git restore archivo.js
-
-# Deshacer commit pero mantener cambios
-git reset --soft HEAD~1
-
-# Cambiar de rama
-git checkout nombre-rama
-
-# Ver cambios antes de hacer push
-git log origin/develop..HEAD
-```
-
-### Checklist antes de hacer Push
-
-- [ ] Hice `git pull` de la rama base
-- [ ] Los cambios son solo en mis archivos
-- [ ] Los commits tienen mensajes descriptivos
-- [ ] El código funciona localmente
-- [ ] No hay conflictos
-- [ ] La rama está actualizada con `develop`
-
-## Contribuciones
-
-## Status del Proyecto
-
-Completado:
-
-- Registro con validación y encriptación
-- Login con verificación de credenciales
-- JWT generación y validación
-- Middleware de autenticación
-- Middleware de 404
-
-Por hacer:
-
-- Endpoints de libros (listar, detalles)
-- Endpoints de reservas
-- Historial de usuario
-- Frontend (registro, login, dashboard)
-- CORS configurado (talvez luego )
-- Validación con ZOD  (talvez luego )
-
-## Equipo Backend
-
-- Cristian: Autenticación y JWT
-- [Compañero 1]: Libros todos e indvidual
-- [Compañero 2]: Reservas e historial
+- Login falla despues de registro:
+  verifica que el usuario se creo en tabla `usuarios`.

@@ -48,21 +48,6 @@ class AuthService {
       'tipo_usuario': tipoUsuario,
     });
 
-    if (response['success'] == true && response['token'] != null) {
-      await ApiService.saveToken(response['token']);
-      
-      final prefs = await SharedPreferences.getInstance();
-      final usuario = response['usuario'];
-      if (usuario != null) {
-        // El ID puede ser int o string (UUID)
-        await prefs.setString('userId', usuario['id']?.toString() ?? '');
-        await prefs.setString('userName', usuario['nombre'] ?? '');
-        await prefs.setString('userApellido', usuario['apellido'] ?? '');
-        await prefs.setString('userTipo', usuario['tipo_usuario'] ?? '');
-        await prefs.setString('userDocumento', usuario['documento'] ?? '');
-      }
-    }
-
     return response;
   }
 

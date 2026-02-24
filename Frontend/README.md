@@ -1,16 +1,30 @@
-# biblioteca_infantil
+# Frontend - Biblioteca Infantil
 
-A new Flutter project.
+Aplicacion Flutter para la biblioteca escolar.
 
-## Getting Started
+## Requisitos
 
-This project is a starting point for a Flutter application.
+- Flutter SDK instalado
+- Backend corriendo en `http://localhost:3000`
 
-A few resources to get you started if this is your first Flutter project:
+## Ejecutar
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+flutter pub get
+flutter run -d chrome
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Flujo esperado
+
+1. Registro de usuario.
+2. Redireccion a Login.
+3. Login exitoso.
+4. Dashboard con libros.
+5. Solicitud y devolucion de prestamos.
+
+## Nota de conexion
+
+El frontend usa `http://localhost:3000` en:
+`lib/services/api_service.dart`
+
+Si cambias puerto del backend, actualiza ese archivo.

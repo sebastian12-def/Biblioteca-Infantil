@@ -67,7 +67,6 @@ class _MisPrestamosPageState extends State<MisPrestamosPage> {
     try {
       final result = await PrestamoService.devolverPrestamo(
         prestamo.id,
-        prestamo.ejemplar?.id ?? '',
       );
       if (result['success'] == true) {
         if (mounted) {

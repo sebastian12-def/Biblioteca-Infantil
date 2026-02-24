@@ -39,12 +39,11 @@ class PrestamoService {
   }
 
   /// Devuelve un préstamo (libera el ejemplar)
-  static Future<Map<String, dynamic>> devolverPrestamo(String idPrestamo, String idEjemplar) async {
+  static Future<Map<String, dynamic>> devolverPrestamo(String idPrestamo) async {
     final response = await ApiService.put(
       '/api/prestamos/devolver',
       {
         'id_prestamo': idPrestamo,
-        'id_ejemplar': idEjemplar,
       },
       withAuth: true,
     );

@@ -75,16 +75,21 @@ export const solicitarPrestamoController = async (req, res) => {
  */
 export const devolverPrestamoController = async (req, res) => {
     try {
-        const { id_prestamo, id_ejemplar } = req.body;
-        if (!id_prestamo || !id_ejemplar) {
+        const { id_prestamo } = req.body;
+        const id_usuario = req.user.id;
+
+        if (!id_prestamo) {
             return res.status(400).json({
                 success: false,
-                message: "Faltan datos necesarios (id_prestamo o id_ejemplar)"
+                message: "Falta id_prestamo"
             });
         }
-        const resultado = await prestamoService.finalizarPrestamo(id_prestamo, id_ejemplar);
+
+        const resultado = await prestamoService.finalizarPrestamo(id_prestamo, id_usuario);
+
         if (!resultado.success) {
-            return res.status(400).json({
+            const isOwnershipError = (resultado.error || '').includes('no pertenece al usuario');
+            return res.status(isOwnershipError ? 403 : 400).json({
                 success: false,
                 message: "No se pudo devolver el libro",
                 error: resultado.error
